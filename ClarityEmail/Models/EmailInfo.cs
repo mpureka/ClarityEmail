@@ -2,9 +2,9 @@ namespace EmailInfo
 {
     class EmailParams
     {
-    public string ToName {get; set;}
-    public string ToAddress {get;set;}
-    public string Subject {get;set;}
-    public string MailBody {get;set;}
+    public required string ToName {get; set;}
+    public required string ToAddress {get;set;}
+    public required string Subject {get;set;}
+    public required string MailBody {get;set;}
     }
 }

@@ -1,7 +1,5 @@
-using System.Diagnostics.CodeAnalysis;
-using MimeKit;
 using System.Text.Json;
-using MailKit.Net.Smtp;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,10 +9,33 @@ builder.Services.AddOpenApi();
 var app = builder.Build();
 
 //This doesn't currently work, but it would be better to be able to grab the whole config
-//var config = builder.Configuration.GetValue<EmailAppConfig>("EmailAppConfig");
+var config = builder.Configuration.GetRequiredSection("EmailAppConfig").Get<EmailAppConfig>();
 
 //This gets us our Appsettings values
-var MailServer = builder.Configuration.GetValue<string>("MailServer");
+var MailServer = config.Server;
+var FromAddress = config.FromAddress;
+var FromName = config.FromName;
+var ServerPort = config.Port;
+
+if (MailServer.Equals(null))
+{
+    throw new ArgumentNullException("MailServer");
+}
+
+if (FromAddress.Equals(null))
+{
+    throw new ArgumentNullException("FromAddress");
+}
+
+if (FromName.Equals(null))
+{
+    throw new ArgumentNullException("FromName");
+}
+
+if (ServerPort==0)
+{
+    throw new ArgumentNullException("Port");
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -23,78 +44,34 @@ if (app.Environment.IsDevelopment())
 }
 
 //Right now, this uses static values, but it needs to get them from Appsettings
-var myRequestHandler= new RequestHandler("mpureka@gmail.com","Mike P.");
+var myEmailHandler= new EmailHandler(FromAddress,FromName);
 var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
 {
     IncludeFields=true,
     WriteIndented=true
 };
 
-app.MapPut("/Test", async (HttpContext context) => 
+app.MapPut("/SendEmail", async Task<Results<Ok<string>,BadRequest<string>>> (HttpContext context) => 
 {
     var requestBody=await context.Request.ReadFromJsonAsync<EmailInfo.EmailParams>(options);
-    if (myRequestHandler.ValidateEmailAddress(requestBody.ToAddress))
+    
+    if (myEmailHandler.ValidateEmailAddress(requestBody.ToAddress))
     {
-        var Email=myRequestHandler.BuildEmail(requestBody.ToName,requestBody.ToAddress,requestBody.Subject, requestBody.MailBody);
-        var Result=myRequestHandler.SendEmail(Email);
-        return Result;
+        var Email=myEmailHandler.BuildEmail(requestBody.ToName,requestBody.ToAddress,requestBody.Subject, requestBody.MailBody);
+        var Result=myEmailHandler.SendEmail(Email,MailServer, ServerPort);
+        if (Result=="Email sending failed!")
+        {
+            return TypedResults.BadRequest(Result);
+        }
+        else
+        {
+            return TypedResults.Ok(Result);
+        }
     }
     else
     {
-    return "Invalid Email Address";
+        return TypedResults.BadRequest(requestBody.ToAddress + " is an invalid Email Address");
     }
 });
 
 app.Run();
-
-class RequestHandler
-{
-public required MailboxAddress fromAddress {get; set;}
-
-#region Constructor
-[SetsRequiredMembers]
-public RequestHandler(string _fromAddress, string _fromName)
-{
-    this.fromAddress=new MailboxAddress(_fromName,_fromAddress);
-}
-#endregion
-
-#region Public Methods
-public MimeMessage BuildEmail(string RecipientName, string RecipientAddress, string Subject, string MessageBody)
-{
-    var message= new MimeMessage();
-    message.From.Add(fromAddress);
-    message.To.Add(new MailboxAddress(RecipientName,RecipientAddress));
-    message.Subject=Subject;
-    //If time allows, add HTML toggle
-    message.Body = new TextPart("plain") 
-    {
-        Text=MessageBody
-    };
-    return message;
-}
-
-public string SendEmail (MimeMessage message)
-{
-    try{
-    var _client=new SmtpClient();
-    _client.Connect("server",587,false);
-    
-    //If we need Authentication, authenticate
-
-    var response = _client.Send(message);
-    _client.Disconnect(true);
-    return response;
-    }
-    catch
-    {
-        return "Email sending failed";
-    }
-}
-
-public bool ValidateEmailAddress(string Address)
-{
-    return true;
-}
-#endregion
-}
