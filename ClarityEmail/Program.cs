@@ -46,7 +46,7 @@ if (ServerPort == 0)
     throw new ArgumentNullException("Port");
 }
 
-var myEmailHandler = new EmailHandler(FromAddress, FromName, LogFile);
+var myEmailHandler = new EmailHandler(FromAddress, FromName, LogFile, MailServer, ServerPort);
 var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
 {
     IncludeFields = true,
@@ -75,18 +75,12 @@ app.MapPut(
             //IF we have authentication info, send the email with SMTP authentication
             if (!AuthUsername.Equals(string.Empty) & !AuthPassword.Equals(string.Empty))
             {
-                Result = await myEmailHandler.SendEmail(
-                    Email,
-                    MailServer,
-                    ServerPort,
-                    AuthUsername,
-                    AuthPassword
-                );
+                Result = await myEmailHandler.SendEmail(Email, AuthUsername, AuthPassword);
             }
             //Otherwise, just send it unsecured.
             else
             {
-                Result = await myEmailHandler.SendEmail(Email, MailServer, ServerPort);
+                Result = await myEmailHandler.SendEmail(Email);
             }
 
             //If sending the Email failed...

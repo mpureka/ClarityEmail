@@ -6,13 +6,23 @@ class EmailHandler
 {
     public required MailboxAddress fromAddress { get; set; }
     public required string logFilePath { get; set; }
+    public required string server { get; set; }
+    public required ushort serverPort { get; set; }
 
     #region Constructor
     [SetsRequiredMembers]
-    public EmailHandler(string _fromAddress, string _fromName, string _logpath)
+    public EmailHandler(
+        string _fromAddress,
+        string _fromName,
+        string _logpath,
+        string _server,
+        ushort _serverPort
+    )
     {
         this.fromAddress = new MailboxAddress(_fromName, _fromAddress);
         this.logFilePath = _logpath;
+        this.server = _server;
+        this.serverPort = _serverPort;
     }
     #endregion
 
@@ -33,15 +43,16 @@ class EmailHandler
         return message;
     }
 
-    public async Task<string> SendEmail(MimeMessage _message, string _server, ushort _serverPort)
+    public async Task<string> SendEmail(MimeMessage _message)
     {
         LogEmailEvent(_message, "Attempting send");
         try
         {
             var client = new SmtpClient();
-            await client.ConnectAsync(_server, _serverPort, false);
+            client.Connect(server, serverPort, false);
             var response = await client.SendAsync(_message);
-            await client.DisconnectAsync(true);
+            client.Disconnect(true);
+            LogEmailEvent(_message, "Successfully sent!");
             return response;
         }
         catch (Exception e)
@@ -53,25 +64,26 @@ class EmailHandler
 
     public async Task<string> SendEmail(
         MimeMessage _message,
-        string _server,
-        ushort _serverPort,
         string _authUser,
         string _authPassword
     )
     {
+        LogEmailEvent(_message, "Attempting send");
         try
         {
             var client = new SmtpClient();
-            await client.ConnectAsync(_server, _serverPort, false);
+            client.Connect(server, serverPort, false);
 
-            await client.AuthenticateAsync(_authUser, _authPassword);
+            client.Authenticate(_authUser, _authPassword);
 
             var response = await client.SendAsync(_message);
-            await client.DisconnectAsync(true);
+            client.Disconnect(true);
+            LogEmailEvent(_message, "Successfully sent!");
             return response;
         }
-        catch
+        catch (Exception e)
         {
+            LogEmailEvent(_message, "Error Code: " + e.Message);
             return "Email sending failed!";
         }
     }
@@ -117,7 +129,7 @@ class EmailHandler
         File.AppendAllText(DestPath, LogEntry);
         LogEntry = DateTime.Now + ": " + _message.Body + " " + Environment.NewLine;
         File.AppendAllText(DestPath, LogEntry);
-        LogEntry = DateTime.Now + ": End of Message" + Environment.NewLine;
+        LogEntry = DateTime.Now + ": --------------------" + Environment.NewLine;
         File.AppendAllText(DestPath, LogEntry);
     }
 }
