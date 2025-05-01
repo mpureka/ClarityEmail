@@ -45,21 +45,31 @@ class EmailHandler : IEmailHandler
 
     public async Task<string> SendEmail(MimeMessage _message)
     {
-        LogEmailEvent(_message, "Attempting send");
-        try
+        var RetryTimes = 3;
+        var WaitTime = 500;
+        var client = new SmtpClient();
+        string response = "";
+        LogEmailEvent(_message, "Attempting to send.");
+        for (int i = 0; i < RetryTimes; i++)
         {
-            var client = new SmtpClient();
-            client.Connect(server, serverPort, false);
-            var response = await client.SendAsync(_message);
-            client.Disconnect(true);
-            LogEmailEvent(_message, "Successfully sent!");
-            return response;
+            LogEmailEvent(_message, "Attempt " + (i + 1));
+            try
+            {
+                client.Connect(server, serverPort, false);
+                response = await client.SendAsync(_message);
+                client.Disconnect(true);
+                LogEmailEvent(_message, "Successfully sent!");
+                break;
+            }
+            catch (Exception e)
+            {
+                LogEmailEvent("Message Failed to Send.");
+                LogEmailEvent(_message, "Error Code: " + e.Message);
+                await Task.Delay(WaitTime);
+                response = "Email Failed to Send.";
+            }
         }
-        catch (Exception e)
-        {
-            LogEmailEvent(_message, "Error Code: " + e.Message);
-            return "Email sending failed!";
-        }
+        return response;
     }
 
     public async Task<string> SendEmail(
@@ -68,24 +78,32 @@ class EmailHandler : IEmailHandler
         string _authPassword
     )
     {
-        LogEmailEvent(_message, "Attempting send");
-        try
+        var RetryTimes = 3;
+        var WaitTime = 500;
+        var client = new SmtpClient();
+        string response = "";
+        LogEmailEvent(_message, "Attempting to send.");
+        for (int i = 0; i < RetryTimes; i++)
         {
-            var client = new SmtpClient();
-            client.Connect(server, serverPort, false);
-
-            client.Authenticate(_authUser, _authPassword);
-
-            var response = await client.SendAsync(_message);
-            client.Disconnect(true);
-            LogEmailEvent(_message, "Successfully sent!");
-            return response;
+            LogEmailEvent(_message, "Attempt " + (i + 1));
+            try
+            {
+                client.Connect(server, serverPort, false);
+                client.Authenticate(_authUser, _authPassword);
+                response = await client.SendAsync(_message);
+                client.Disconnect(true);
+                LogEmailEvent(_message, "Successfully sent!");
+                break;
+            }
+            catch (Exception e)
+            {
+                LogEmailEvent("Message Failed to Send.");
+                LogEmailEvent(_message, "Error Code: " + e.Message);
+                await Task.Delay(WaitTime);
+                response = "Email Failed to Send.";
+            }
         }
-        catch (Exception e)
-        {
-            LogEmailEvent(_message, "Error Code: " + e.Message);
-            return "Email sending failed!";
-        }
+        return response;
     }
 
     public bool ValidateEmailAddress(string _address)
@@ -108,18 +126,37 @@ class EmailHandler : IEmailHandler
     }
     #endregion
 
-    private void LogEmailEvent()
+    private async Task<string> MailSender(MimeMessage _message)
+    {
+        var client = new SmtpClient();
+        try
+        {
+            client.Connect(server, serverPort, false);
+            client.Connect(server, serverPort, false);
+            var response = await client.SendAsync(_message);
+            client.Disconnect(true);
+            LogEmailEvent(_message, "Successfully sent!");
+            return response;
+        }
+        catch (Exception e)
+        {
+            LogEmailEvent(_message, "Error Code: " + e.Message);
+            return "Email Failed to Send.";
+        }
+    }
+
+    private void LogEmailEvent(string _data)
     {
         var DestPath = logFilePath;
-        string LogEntry = DateTime.Now + ": Values and stuff go here." + Environment.NewLine;
+        string LogEntry = DateTime.Now + ": " + _data + Environment.NewLine;
         File.AppendAllText(DestPath, LogEntry);
     }
 
-    private void LogEmailEvent(MimeMessage _message, string _status)
+    private void LogEmailEvent(MimeMessage _message, string _data)
     {
         //var DestPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
         var DestPath = logFilePath;
-        string LogEntry = DateTime.Now + ": Status: " + _status + " " + Environment.NewLine;
+        string LogEntry = DateTime.Now + ": " + _data + " " + Environment.NewLine;
         File.AppendAllText(DestPath, LogEntry);
         LogEntry = DateTime.Now + ": From: " + _message.From + " " + Environment.NewLine;
         File.AppendAllText(DestPath, LogEntry);
@@ -129,7 +166,9 @@ class EmailHandler : IEmailHandler
         File.AppendAllText(DestPath, LogEntry);
         LogEntry = DateTime.Now + ": " + _message.Body + " " + Environment.NewLine;
         File.AppendAllText(DestPath, LogEntry);
-        LogEntry = DateTime.Now + ": --------------------" + Environment.NewLine;
+        LogEntry = DateTime.Now + ": ---------End of Message-----------" + Environment.NewLine;
+        File.AppendAllText(DestPath, LogEntry);
+        LogEntry = DateTime.Now + Environment.NewLine;
         File.AppendAllText(DestPath, LogEntry);
     }
 }
