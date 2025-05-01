@@ -69,7 +69,8 @@ app.MapPut(
                 requestBody.ToName,
                 requestBody.ToAddress,
                 requestBody.Subject,
-                requestBody.MailBody
+                requestBody.MailBody,
+                requestBody.IsPlainText
             );
             //IF we have authentication info, send the email with SMTP authentication
             if (!AuthUsername.Equals(string.Empty) & !AuthPassword.Equals(string.Empty))

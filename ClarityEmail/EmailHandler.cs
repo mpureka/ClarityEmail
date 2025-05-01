@@ -31,15 +31,22 @@ class EmailHandler : IEmailHandler
         string _recipientName,
         string _recipientAddress,
         string _subject,
-        string _messageBody
+        string _messageBody,
+        bool _isPlainText
     )
     {
         var message = new MimeMessage();
         message.From.Add(fromAddress);
         message.To.Add(new MailboxAddress(_recipientName, _recipientAddress));
         message.Subject = _subject;
-        //If time allows, add HTML toggle
-        message.Body = new TextPart("plain") { Text = _messageBody };
+        if (_isPlainText)
+        {
+            message.Body = new TextPart("plain") { Text = _messageBody };
+        }
+        else
+        {
+            message.Body = new TextPart("HTML") { Text = _messageBody };
+        }
         return message;
     }
 
@@ -49,13 +56,17 @@ class EmailHandler : IEmailHandler
         var WaitTime = 500;
         var client = new SmtpClient();
         string response = "";
-        LogEmailEvent(_message, "Attempting to send.");
+        LogEmailEvent("Attempting to send.");
+        LogEmailEvent("Using Server: " + server + " port: " + serverPort);
         for (int i = 0; i < RetryTimes; i++)
         {
             LogEmailEvent(_message, "Attempt " + (i + 1));
             try
             {
-                client.Connect(server, serverPort, false);
+                if (!client.IsConnected)
+                {
+                    client.Connect(server, serverPort, false);
+                }
                 response = await client.SendAsync(_message);
                 client.Disconnect(true);
                 LogEmailEvent(_message, "Successfully sent!");
@@ -82,14 +93,20 @@ class EmailHandler : IEmailHandler
         var WaitTime = 500;
         var client = new SmtpClient();
         string response = "";
-        LogEmailEvent(_message, "Attempting to send.");
+        LogEmailEvent("Attempting to send.");
         for (int i = 0; i < RetryTimes; i++)
         {
             LogEmailEvent(_message, "Attempt " + (i + 1));
             try
             {
-                client.Connect(server, serverPort, false);
-                client.Authenticate(_authUser, _authPassword);
+                if (!client.IsConnected)
+                {
+                    client.Connect(server, serverPort, false);
+                }
+                if (!client.IsAuthenticated)
+                {
+                    client.Authenticate(_authUser, _authPassword);
+                }
                 response = await client.SendAsync(_message);
                 client.Disconnect(true);
                 LogEmailEvent(_message, "Successfully sent!");
