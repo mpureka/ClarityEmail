@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "1UiebIqbBppMAMjIK83z7CVrS1kMSYxHFnpc/TtehEI=",
+  "Source": "ClarityEmail",
+  "BasePath": "_content/ClarityEmail",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

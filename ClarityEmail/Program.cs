@@ -1,9 +1,10 @@
+using System.Text.Json;
+using Microsoft.AspNetCore.Http.HttpResults;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -12,30 +13,90 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+//Load the config from appsettings
+var config = builder.Configuration.GetRequiredSection("EmailAppConfig").Get<EmailAppConfig>();
 
-var summaries = new[]
+//Get Appsettings values
+var MailServer = config.Server;
+var FromAddress = config.FromAddress;
+var FromName = config.FromName;
+var ServerPort = config.Port;
+var LogFile = config.LogFile;
+var AuthUsername = string.IsNullOrEmpty(config.AuthUsername) ? string.Empty : config.AuthUsername;
+var AuthPassword = string.IsNullOrEmpty(config.AuthPassword) ? string.Empty : config.AuthPassword;
+
+//Validate Config values
+if (MailServer.Equals(null))
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
+    throw new ArgumentNullException("MailServer");
+}
+
+if (FromAddress.Equals(null))
+{
+    throw new ArgumentNullException("FromAddress");
+}
+
+if (FromName.Equals(null))
+{
+    throw new ArgumentNullException("FromName");
+}
+
+if (ServerPort == 0)
+{
+    throw new ArgumentNullException("Port");
+}
+
+var myEmailHandler = new EmailHandler(FromAddress, FromName, LogFile, MailServer, ServerPort);
+var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+{
+    IncludeFields = true,
+    WriteIndented = true,
 };
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.MapPut(
+    "/SendEmail",
+    async Task<Results<Ok<string>, BadRequest<string>>> (HttpContext context) =>
+    {
+        //Read the request body
+        var requestBody = await context.Request.ReadFromJsonAsync<EmailInfo.EmailParams>(options);
+        string Result;
+
+        //Validate the email address
+        if (myEmailHandler.ValidateEmailAddress(requestBody.ToAddress))
+        {
+            //Build the Email
+            var Email = myEmailHandler.BuildEmail(
+                requestBody.ToName,
+                requestBody.ToAddress,
+                requestBody.Subject,
+                requestBody.MailBody
+            );
+            //IF we have authentication info, send the email with SMTP authentication
+            if (!AuthUsername.Equals(string.Empty) & !AuthPassword.Equals(string.Empty))
+            {
+                Result = await myEmailHandler.SendEmail(Email, AuthUsername, AuthPassword);
+            }
+            //Otherwise, just send it unsecured.
+            else
+            {
+                Result = await myEmailHandler.SendEmail(Email);
+            }
+
+            //If sending the Email failed...
+            if (Result == "Email sending failed!")
+            {
+                return TypedResults.BadRequest(Result);
+            }
+            else
+            {
+                return TypedResults.Ok(Result);
+            }
+        }
+        else
+        {
+            return TypedResults.BadRequest(requestBody.ToAddress + " is an invalid Email Address");
+        }
+    }
+);
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

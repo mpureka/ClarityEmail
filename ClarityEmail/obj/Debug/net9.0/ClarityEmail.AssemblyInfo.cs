@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ClarityEmail")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1825780abd9952fd6da535d665f456fe4ecec1a0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4240f9305a37ade667bb6f89b7daa2801a4434ac")]
 [assembly: System.Reflection.AssemblyProductAttribute("ClarityEmail")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ClarityEmail")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
