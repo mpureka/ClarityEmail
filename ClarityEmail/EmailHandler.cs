@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using MailKit.Net.Smtp;
 using MimeKit;
 
-class EmailHandler
+class EmailHandler : IEmailHandler
 {
     public required MailboxAddress fromAddress { get; set; }
     public required string logFilePath { get; set; }
@@ -108,14 +108,14 @@ class EmailHandler
     }
     #endregion
 
-    public void LogEmailEvent()
+    private void LogEmailEvent()
     {
         var DestPath = logFilePath;
         string LogEntry = DateTime.Now + ": Values and stuff go here." + Environment.NewLine;
         File.AppendAllText(DestPath, LogEntry);
     }
 
-    public void LogEmailEvent(MimeMessage _message, string _status)
+    private void LogEmailEvent(MimeMessage _message, string _status)
     {
         //var DestPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
         var DestPath = logFilePath;
