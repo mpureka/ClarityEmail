@@ -1,7 +1,10 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Text;
 using MailKit.Net.Smtp;
 using MimeKit;
+using MimeKit.Text;
 
 class EmailHandler : IEmailHandler
 {
@@ -34,7 +37,9 @@ class EmailHandler : IEmailHandler
         string _subject,
         string _messageBody,
         bool _isPlainText,
-        EmailAttachment[] _attachments
+        EmailAttachment[] _attachments,
+        EmailAddress[] _CC,
+        EmailAddress[] _BCC
     )
     {
         var message = new MimeMessage();
@@ -44,6 +49,14 @@ class EmailHandler : IEmailHandler
         if (_isPlainText)
         {
             var messageBuilder = new BodyBuilder { TextBody = _messageBody };
+            if (_CC.Length != 0)
+            {
+                message = AddCC(message, _CC);
+            }
+            if (_BCC.Length != 0)
+            {
+                message = AddBCC(message, _BCC);
+            }
             if (_attachments.Length != 0)
             {
                 AddEmailAttachments(messageBuilder, _attachments);
@@ -53,6 +66,14 @@ class EmailHandler : IEmailHandler
         else
         {
             var messageBuilder = new BodyBuilder { HtmlBody = _messageBody };
+            if (_CC.Length != 0)
+            {
+                message = AddCC(message, _CC);
+            }
+            if (_BCC.Length != 0)
+            {
+                message = AddBCC(message, _BCC);
+            }
             if (_attachments.Length != 0)
             {
                 AddEmailAttachments(messageBuilder, _attachments);
@@ -107,6 +128,7 @@ class EmailHandler : IEmailHandler
         var client = new SmtpClient();
         string response = "";
         LogEmailEvent("Attempting to send.");
+        LogEmailEvent("Using Server: " + server + " port: " + serverPort);
         for (int i = 0; i < RetryTimes; i++)
         {
             LogEmailEvent(_message, "Attempt " + (i + 1));
@@ -185,7 +207,6 @@ class EmailHandler : IEmailHandler
 
     private void LogEmailEvent(MimeMessage _message, string _data)
     {
-        //var DestPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
         var DestPath = logFilePath;
         string LogEntry = DateTime.Now + ": " + _data + " " + Environment.NewLine;
         File.AppendAllText(DestPath, LogEntry);
@@ -195,7 +216,14 @@ class EmailHandler : IEmailHandler
         File.AppendAllText(DestPath, LogEntry);
         LogEntry = DateTime.Now + ": Subject: " + _message.Subject + " " + Environment.NewLine;
         File.AppendAllText(DestPath, LogEntry);
-        LogEntry = DateTime.Now + ": " + _message.Body + " " + Environment.NewLine;
+        if (_message.TextBody == null)
+        {
+            LogEntry = DateTime.Now + ": " + _message.HtmlBody.ToString() + " " + Environment.NewLine;
+        }
+        else
+        {
+            LogEntry = DateTime.Now + ": " + _message.TextBody + " " + Environment.NewLine;
+        }
         File.AppendAllText(DestPath, LogEntry);
         LogEntry = DateTime.Now + ": ---------End of Message-----------" + Environment.NewLine;
         File.AppendAllText(DestPath, LogEntry);
@@ -213,5 +241,23 @@ class EmailHandler : IEmailHandler
             _messageBuilder.Attachments.Add(attachment.Filename, attachment.Body);
         }
         return _messageBuilder;
+    }
+
+    private MimeMessage AddCC(MimeMessage _message, EmailAddress[] _CC)
+    {
+        foreach (EmailAddress address in _CC)
+        {
+            _message.Cc.Add(new MailboxAddress(address.Name, address.Address));
+        }
+        return _message;
+    }
+
+    private MimeMessage AddBCC(MimeMessage _message, EmailAddress[] _BCC)
+    {
+        foreach (EmailAddress address in _BCC)
+        {
+            _message.Bcc.Add(new MailboxAddress(address.Name, address.Address));
+        }
+        return _message;
     }
 }

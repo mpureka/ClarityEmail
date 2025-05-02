@@ -1,4 +1,5 @@
 using System.Text.Json;
+using EmailInfo;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -74,7 +75,9 @@ app.MapPut(
                     requestBody.Subject,
                     requestBody.MailBody,
                     requestBody.IsPlainText,
-                    requestBody.Attachments
+                    requestBody.Attachments,
+                    requestBody.CC,
+                    requestBody.Bcc
                 );
                 //IF we have authentication info, send the email with SMTP authentication
                 if (!AuthUsername.Equals(string.Empty) & !AuthPassword.Equals(string.Empty))
@@ -117,13 +120,15 @@ app.MapPut(
         {
             try
             {
-                //Build the Email
+                //Build the Test Email, using only the email address.
                 var Email = myEmailHandler.BuildEmail(
                     TestRecipientName,
                     requestBody.ToAddress,
                     "This is only a test.",
                     "Please disregard this test mail.",
                     false,
+                    [],
+                    [],
                     []
                 );
                 //IF we have authentication info, send the email with SMTP authentication
