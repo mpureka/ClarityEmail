@@ -6,6 +6,7 @@ namespace EmailInfo
         public required string ToAddress { get; set; }
         public required string Subject { get; set; }
         public required string MailBody { get; set; }
-        public bool IsPlainText { get; set; }
+        public bool IsPlainText { get; set; } = false;
+        public EmailAttachment[] Attachments { get; set; } = [];
     }
 }

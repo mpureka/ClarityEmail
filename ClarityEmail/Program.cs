@@ -62,7 +62,6 @@ app.MapPut(
     {
         //Read the request body
         var requestBody = await context.Request.ReadFromJsonAsync<EmailInfo.EmailParams>(options);
-
         //Validate the email address
         if (myEmailHandler.ValidateEmailAddress(requestBody.ToAddress))
         {
@@ -74,7 +73,8 @@ app.MapPut(
                     requestBody.ToAddress,
                     requestBody.Subject,
                     requestBody.MailBody,
-                    requestBody.IsPlainText
+                    requestBody.IsPlainText,
+                    requestBody.Attachments
                 );
                 //IF we have authentication info, send the email with SMTP authentication
                 if (!AuthUsername.Equals(string.Empty) & !AuthPassword.Equals(string.Empty))
@@ -123,7 +123,8 @@ app.MapPut(
                     requestBody.ToAddress,
                     "This is only a test.",
                     "Please disregard this test mail.",
-                    false
+                    false,
+                    []
                 );
                 //IF we have authentication info, send the email with SMTP authentication
                 if (!AuthUsername.Equals(string.Empty) & !AuthPassword.Equals(string.Empty))

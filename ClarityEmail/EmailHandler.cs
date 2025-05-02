@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
 using MailKit.Net.Smtp;
 using MimeKit;
 
@@ -32,21 +33,31 @@ class EmailHandler : IEmailHandler
         string _recipientAddress,
         string _subject,
         string _messageBody,
-        bool _isPlainText
+        bool _isPlainText,
+        EmailAttachment[] _attachments
     )
     {
         var message = new MimeMessage();
         message.From.Add(fromAddress);
-
         message.To.Add(new MailboxAddress(_recipientName, _recipientAddress));
         message.Subject = _subject;
         if (_isPlainText)
         {
-            message.Body = new TextPart("plain") { Text = _messageBody };
+            var messageBuilder = new BodyBuilder { TextBody = _messageBody };
+            if (_attachments.Length != 0)
+            {
+                AddEmailAttachments(messageBuilder, _attachments);
+            }
+            message.Body = messageBuilder.ToMessageBody();
         }
         else
         {
-            message.Body = new TextPart("HTML") { Text = _messageBody };
+            var messageBuilder = new BodyBuilder { HtmlBody = _messageBody };
+            if (_attachments.Length != 0)
+            {
+                AddEmailAttachments(messageBuilder, _attachments);
+            }
+            message.Body = messageBuilder.ToMessageBody();
         }
         return message;
     }
@@ -190,5 +201,17 @@ class EmailHandler : IEmailHandler
         File.AppendAllText(DestPath, LogEntry);
         LogEntry = DateTime.Now + Environment.NewLine;
         File.AppendAllText(DestPath, LogEntry);
+    }
+
+    private BodyBuilder AddEmailAttachments(
+        BodyBuilder _messageBuilder,
+        EmailAttachment[] _attachments
+    )
+    {
+        foreach (EmailAttachment attachment in _attachments)
+        {
+            _messageBuilder.Attachments.Add(attachment.Filename, attachment.Body);
+        }
+        return _messageBuilder;
     }
 }
