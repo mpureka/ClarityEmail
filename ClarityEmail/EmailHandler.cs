@@ -37,6 +37,7 @@ class EmailHandler : IEmailHandler
     {
         var message = new MimeMessage();
         message.From.Add(fromAddress);
+
         message.To.Add(new MailboxAddress(_recipientName, _recipientAddress));
         message.Subject = _subject;
         if (_isPlainText)
@@ -53,7 +54,7 @@ class EmailHandler : IEmailHandler
     public async Task<string> SendEmail(MimeMessage _message)
     {
         var RetryTimes = 3;
-        var WaitTime = 500;
+        var WaitTime = 10000;
         var client = new SmtpClient();
         string response = "";
         LogEmailEvent("Attempting to send.");
@@ -68,14 +69,15 @@ class EmailHandler : IEmailHandler
                     client.Connect(server, serverPort, false);
                 }
                 response = await client.SendAsync(_message);
-                client.Disconnect(true);
+                client.DisconnectAsync(true);
+                LogEmailEvent(response);
                 LogEmailEvent(_message, "Successfully sent!");
                 break;
             }
             catch (Exception e)
             {
                 LogEmailEvent("Message Failed to Send.");
-                LogEmailEvent(_message, "Error Code: " + e.Message);
+                LogEmailEvent(_message, "Error Message: " + e.Message);
                 await Task.Delay(WaitTime);
                 response = "Email Failed to Send.";
             }
@@ -108,14 +110,15 @@ class EmailHandler : IEmailHandler
                     client.Authenticate(_authUser, _authPassword);
                 }
                 response = await client.SendAsync(_message);
-                client.Disconnect(true);
+                client.DisconnectAsync(true);
+                LogEmailEvent(response);
                 LogEmailEvent(_message, "Successfully sent!");
                 break;
             }
             catch (Exception e)
             {
                 LogEmailEvent("Message Failed to Send.");
-                LogEmailEvent(_message, "Error Code: " + e.Message);
+                LogEmailEvent(_message, "Error Message: " + e.Message);
                 await Task.Delay(WaitTime);
                 response = "Email Failed to Send.";
             }
