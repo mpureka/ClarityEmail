@@ -6,7 +6,11 @@ public interface IEmailHandler
         string _recipientName,
         string _recipientAddress,
         string _subject,
-        string _messageBody
+        string _messageBody,
+        bool _isPlainText,
+        EmailAttachment[] _attachments,
+        EmailAddress[] _CC,
+        EmailAddress[] _BCC
     );
 
     public Task<string> SendEmail(MimeMessage _message);

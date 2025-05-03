@@ -1,4 +1,5 @@
 using System.Text.Json;
+using EmailInfo;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -46,6 +47,7 @@ if (ServerPort == 0)
     throw new ArgumentNullException("Port");
 }
 
+//Setup Email handler and JsonSerializer Options.
 var myEmailHandler = new EmailHandler(FromAddress, FromName, LogFile, MailServer, ServerPort);
 var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
 {
@@ -55,41 +57,44 @@ var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
 
 app.MapPut(
     "/SendEmail",
-    async Task<Results<Ok<string>, BadRequest<string>>> (HttpContext context) =>
+    async Task<Results<Ok<string>, BadRequest<string>, InternalServerError<string>>> (
+        HttpContext context
+    ) =>
     {
         //Read the request body
         var requestBody = await context.Request.ReadFromJsonAsync<EmailInfo.EmailParams>(options);
-        string Result;
-
         //Validate the email address
         if (myEmailHandler.ValidateEmailAddress(requestBody.ToAddress))
         {
-            //Build the Email
-            var Email = myEmailHandler.BuildEmail(
-                requestBody.ToName,
-                requestBody.ToAddress,
-                requestBody.Subject,
-                requestBody.MailBody
-            );
-            //IF we have authentication info, send the email with SMTP authentication
-            if (!AuthUsername.Equals(string.Empty) & !AuthPassword.Equals(string.Empty))
+            try
             {
-                Result = await myEmailHandler.SendEmail(Email, AuthUsername, AuthPassword);
-            }
-            //Otherwise, just send it unsecured.
-            else
-            {
-                Result = await myEmailHandler.SendEmail(Email);
-            }
+                //Build the Email
+                var Email = myEmailHandler.BuildEmail(
+                    requestBody.ToName,
+                    requestBody.ToAddress,
+                    requestBody.Subject,
+                    requestBody.MailBody,
+                    requestBody.IsPlainText,
+                    requestBody.Attachments,
+                    requestBody.CC,
+                    requestBody.Bcc
+                );
+                //IF we have authentication info, send the email with SMTP authentication
+                if (!AuthUsername.Equals(string.Empty) & !AuthPassword.Equals(string.Empty))
+                {
+                    myEmailHandler.SendEmail(Email, AuthUsername, AuthPassword);
+                }
+                //Otherwise, just send it unsecured.
+                else
+                {
+                    myEmailHandler.SendEmail(Email);
+                }
 
-            //If sending the Email failed...
-            if (Result == "Email sending failed!")
-            {
-                return TypedResults.BadRequest(Result);
+                return TypedResults.Ok("Email Accepted, see logs for details.");
             }
-            else
+            catch
             {
-                return TypedResults.Ok(Result);
+                return TypedResults.InternalServerError("There was a problem with the request");
             }
         }
         else
@@ -99,4 +104,54 @@ app.MapPut(
     }
 );
 
+app.MapPut(
+    "/TestEmail",
+    async Task<Results<Ok<string>, BadRequest<string>, InternalServerError<string>>> (
+        HttpContext context
+    ) =>
+    {
+        //Get the request body
+        var requestBody = await context.Request.ReadFromJsonAsync<EmailInfo.TestEmailParams>(
+            options
+        );
+        string TestRecipientName = requestBody.ToAddress.Split('@')[0];
+        //Validate the email address
+        if (myEmailHandler.ValidateEmailAddress(requestBody.ToAddress))
+        {
+            try
+            {
+                //Build the Test Email, using only the email address.
+                var Email = myEmailHandler.BuildEmail(
+                    TestRecipientName,
+                    requestBody.ToAddress,
+                    "This is only a test.",
+                    "Please disregard this test mail.",
+                    false,
+                    [],
+                    [],
+                    []
+                );
+                //IF we have authentication info, send the email with SMTP authentication
+                if (!AuthUsername.Equals(string.Empty) & !AuthPassword.Equals(string.Empty))
+                {
+                    myEmailHandler.SendEmail(Email, AuthUsername, AuthPassword);
+                }
+                //Otherwise, just send it unsecured.
+                else
+                {
+                    myEmailHandler.SendEmail(Email);
+                }
+                return TypedResults.Ok("Email Accepted, see logs for details.");
+            }
+            catch
+            {
+                return TypedResults.InternalServerError("There was a problem with the request");
+            }
+        }
+        else
+        {
+            return TypedResults.BadRequest(requestBody.ToAddress + " is an invalid Email Address");
+        }
+    }
+);
 app.Run();
