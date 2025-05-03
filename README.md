@@ -1,7 +1,7 @@
 # ClarityEmail
 Email Assignment from Clarity Ventures
 
-#Setup Instructions
+# Setup Instructions
 Configure settings in appsettings.json, modifying the EmailAppConfig section.
 Fields are as follows:
 
@@ -14,13 +14,13 @@ Fields are as follows:
 
 Build and run as normal.
 
-#Usage
+# Usage
 The application accepts JSON messages PUT to:
 /TestEmail
 and
 /SendEmail
 
-#TestEmail
+## TestEmail
 /TestEmail accepts simple JSON with only an Email address:
 {
     "ToAddress":"mpureka@gmail.com"
@@ -28,7 +28,7 @@ and
 
 It will send a test email to that email address.
 
-#SendEmail
+## SendEmail
 /SendEmail requires a more complex json, with the following required fields:
 
     ToName -- The name of the recipient
@@ -37,6 +37,7 @@ It will send a test email to that email address.
     MailBody -- The mail body. Accepts HTML.
 
 Additionally, the following values are optional:
+
     IsPlainText: A Boolen value. If set to True, the message will be sent as plain text rather than HTML. Defaults to false if omitted.
     CC -- A list of Name/Address field pairs to CC on the message e.g. "CC":[{"Name":"Mimi","Address":"mimi@gmail.com"}]
     BCC -- A list of Name/Address field pairs to BCC on the message e.g. "BCC":[{"Name":"James","Address":"TheJames@gmail.com"}]
